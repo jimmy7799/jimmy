@@ -218,7 +218,7 @@ function renderHotel() {
   const cover = field(hotel, ['cover_image', 'cover', 'image'], 'header.jpg');
   const video = field(hotel, ['hotel_video', 'video'], '');
   const booking = field(hotel, ['booking_url', 'booking'], '#');
-  const rooms = DATA.HOTEL_ROOM || [];
+  const rooms = getActiveRooms();
 
   app.querySelector('#view').innerHTML = `
     ${topbar()}
@@ -233,7 +233,7 @@ function renderHotel() {
       <div class="room-grid" style="margin-top:14px;">
         ${rooms.length ? rooms.map((r, idx) => {
           const name = field(r, ['nama', 'name', 'title'], `Room ${idx + 1}`);
-          const image = field(r, ['image', 'asset', 'foto'], '');
+          const image = field(r, ['foto_1', 'foto1', 'foto', 'image', 'asset'], '');
           return `
             <div class="room-card" onclick="openRoom(${idx})">
               <div class="room-photo"><img src="${img(image)}" alt="${name}" onerror="this.parentElement.style.display='none'"></div>
@@ -254,28 +254,46 @@ function openRoom(idx) {
   navigate('room-detail');
 }
 
-function renderRoomDetail() {
+// Ambil hanya kamar dengan AKTIF = TRUE, diurutkan sesuai kolom URUTAN
+function getActiveRooms() {
   const rooms = DATA.HOTEL_ROOM || [];
+  return rooms
+    .filter(r => {
+      const aktif = field(r, ['aktif', 'active'], 'TRUE');
+      return String(aktif).trim().toUpperCase() !== 'FALSE';
+    })
+    .sort((a, b) => {
+      const ua = Number(field(a, ['urutan', 'order'], 999)) || 999;
+      const ub = Number(field(b, ['urutan', 'order'], 999)) || 999;
+      return ua - ub;
+    });
+}
+
+function renderRoomDetail() {
+  const rooms = getActiveRooms();
   const r = rooms[window.__roomIdx] || {};
   const name = field(r, ['nama', 'name', 'title'], 'Kamar');
-  const image = field(r, ['image', 'asset', 'foto'], '');
+  const image = field(r, ['foto_1', 'foto1', 'foto', 'image', 'asset'], '');
+  const image2 = field(r, ['foto_2', 'foto2'], '');
   const desc = field(r, ['deskripsi', 'description'], 'Deskripsi kamar belum diisi.');
   const facilitiesRaw = field(r, ['fasilitas', 'facilities'], '');
   const facilities = facilitiesRaw ? String(facilitiesRaw).split(/[,•\n]/).map(s => s.trim()).filter(Boolean) : [];
-  const video = field(r, ['video_tiktok', 'video'], '');
+  const videoTiktok = field(r, ['video_tiktok'], '');
+  const videoMp4 = field(r, ['video_mp4'], '');
   const booking = field(r, ['booking_url', 'booking'], field((DATA.HOTEL && DATA.HOTEL[0]), ['booking_url'], '#'));
 
   app.querySelector('#view').innerHTML = `
     ${topbar()}
     <div class="detail-wrap">
       <div class="detail-cover"><img src="${img(image)}" alt="${name}" onerror="this.parentElement.style.display='none'"></div>
+      ${image2 ? `<div class="detail-cover" style="margin-top:-4px;"><img src="${img(image2)}" alt="${name} 2" onerror="this.parentElement.style.display='none'"></div>` : ''}
       <h2 class="detail-title">${name}</h2>
       <p class="detail-desc">${desc}</p>
       ${facilities.length ? `
         <h4 class="section-title" style="font-size:16px; text-align:left;">Fasilitas</h4>
         <ul class="facility-list">${facilities.map(f => `<li>${f}</li>`).join('')}</ul>
       ` : ''}
-      ${tiktokEmbed(video)}
+      ${videoTiktok ? tiktokEmbed(videoTiktok) : (videoMp4 ? `<div class="video-embed"><video src="${videoMp4.startsWith('http') ? videoMp4 : img(videoMp4)}" controls playsinline></video></div>` : '')}
       <button class="btn-gold solid" onclick="window.open('${booking}','_blank')">📅 &nbsp; PESAN</button>
     </div>
     ${homeCta()}

@@ -8,6 +8,40 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyupfHwqHrC1UsbKpnBMDQ6
 
 const ASSETS = 'assets/';
 
+/* ---------------------------------------------------------
+   KONFIGURASI TETAP (di-hardcode di kode, bukan dari Spreadsheet)
+--------------------------------------------------------- */
+const WA_NUMBER = '6285895665170'; // 08... diubah jadi 62...
+
+function waLink(message) {
+  return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
+const HOTEL_LOCATION_URL = 'https://maps.app.goo.gl/nRjRBrGsmcunWtj96';
+
+// Lokasi oleh-oleh dicocokkan berdasarkan nama toko (huruf kecil semua)
+const OLEH_OLEH_LOCATIONS = {
+  'paradise center point oleh-oleh': HOTEL_LOCATION_URL, // 1 lokasi dengan hotel
+  'batu paradise factory outlet': 'https://maps.app.goo.gl/5Bur8db4mbX6xa7k6',
+};
+
+const CAFE_CONFIG = {
+  PCP_BISTRO: {
+    name: 'PCP Cafe Bistro',
+    image: 'cafe_pcp.jpg',
+    menuUrl: null, // belum ada link menu
+    mapsUrl: 'https://maps.app.goo.gl/8Qrxkn6xqjFd3va69',
+    waMessage: 'Hai, mau tanya cafe PCP',
+  },
+  ZERO_SIX: {
+    name: 'Zero Six Sky Lounge',
+    image: 'cafe_zero.jpg',
+    menuUrl: 'https://zerosixskylounge.github.io/menu/',
+    mapsUrl: 'https://maps.app.goo.gl/z2SKJ7vME3Hbjm9k6',
+    waMessage: 'Hai, mau tanya cafe Zero Six',
+  },
+};
+
 // State global
 let DATA = {};          // seluruh isi spreadsheet
 let history = ['home']; // stack navigasi untuk tombol "Kembali"
@@ -61,13 +95,6 @@ function topbar({ showBack = true } = {}) {
     <div class="topbar">
       ${showBack ? `<button class="back-btn" onclick="goBack()">${iconSvg('back')} Kembali</button>` : `<span></span>`}
       <button class="home-btn" onclick="goHome()">${iconSvg('home')} Home</button>
-    </div>`;
-}
-
-function homeCta() {
-  return `
-    <div class="home-cta-wrap">
-      <button class="home-cta" onclick="goHome()">${iconSvg('home')} &nbsp; KEMBALI KE HOME</button>
     </div>`;
 }
 
@@ -205,7 +232,6 @@ function renderHotel() {
   const desc = field(hotel, ['description', 'deskripsi'], 'Kenyamanan menginap dengan sentuhan mewah di jantung kota.');
   const cover = field(hotel, ['cover_image', 'cover', 'image'], 'header.jpg');
   const video = field(hotel, ['hotel_video', 'video'], '');
-  const booking = field(hotel, ['booking_url', 'booking'], '#');
   const rooms = getActiveRooms();
 
   app.querySelector('#view').innerHTML = `
@@ -215,7 +241,8 @@ function renderHotel() {
       <h2 class="detail-title">${title}</h2>
       <p class="detail-desc">${desc}</p>
       ${video ? `<button class="btn-gold" onclick="window.open('${video}','_blank')">▶ &nbsp; VIDEO HOTEL</button>` : ''}
-      <button class="btn-gold solid" onclick="window.open('${booking}','_blank')">📅 &nbsp; PESAN KAMAR</button>
+      <button class="btn-gold" onclick="window.open('${HOTEL_LOCATION_URL}','_blank')">📍 &nbsp; LOKASI</button>
+      <button class="btn-gold solid" onclick="window.open('${waLink('Hai, mau tanya kamar Paradise Center Point Hotel')}','_blank')">💬 &nbsp; PESAN KAMAR</button>
       <div class="divider"></div>
       <h3 class="section-title" style="font-size:20px;">Pilihan Kamar</h3>
       <div class="room-grid" style="margin-top:14px;">
@@ -233,7 +260,6 @@ function renderHotel() {
         }).join('') : `<p class="empty-state">Data kamar belum tersedia di Spreadsheet.</p>`}
       </div>
     </div>
-    ${homeCta()}
   `;
 }
 
@@ -267,7 +293,6 @@ function renderRoomDetail() {
   const facilitiesRaw = field(r, ['fasilitas', 'facilities'], '');
   const facilities = facilitiesRaw ? String(facilitiesRaw).split(/[,•\n]/).map(s => s.trim()).filter(Boolean) : [];
   const videoMp4 = field(r, ['video_mp4'], '');
-  const booking = field(r, ['booking_url', 'booking'], field((DATA.HOTEL && DATA.HOTEL[0]), ['booking_url'], '#'));
 
   app.querySelector('#view').innerHTML = `
     ${topbar()}
@@ -281,9 +306,8 @@ function renderRoomDetail() {
         <ul class="facility-list">${facilities.map(f => `<li>${f}</li>`).join('')}</ul>
       ` : ''}
       ${videoMp4 ? `<div class="video-embed"><video src="${videoMp4.startsWith('http') ? videoMp4 : img(videoMp4)}" controls playsinline preload="metadata"></video></div>` : ''}
-      <button class="btn-gold solid" onclick="window.open('${booking}','_blank')">📅 &nbsp; PESAN</button>
+      <button class="btn-gold solid" onclick="window.open('${waLink(`Hai, mau pesan kamar ${name}`)}','_blank')">💬 &nbsp; PESAN</button>
     </div>
-    ${homeCta()}
   `;
 }
 function renderOlehOleh() {
@@ -309,7 +333,6 @@ function renderOlehOleh() {
           </div>`;
       }).join('')}
     </div>
-    ${homeCta()}
   `;
 }
 
@@ -334,7 +357,6 @@ function renderCafe() {
           </div>
         </div>`).join('')}
     </div>
-    ${homeCta()}
   `;
 }
 
@@ -347,15 +369,10 @@ function renderCafeDetail() {
   const key = window.__cafeKey;
   const rows = DATA[key] || [];
   const c = rows[0] || {};
-  const fallbackNames = { PCP_BISTRO: 'PCP Cafe Bistro', ZERO_SIX: 'Zero Six Sky Lounge' };
-  const fallbackImages = { PCP_BISTRO: 'cafe_pcp.jpg', ZERO_SIX: 'cafe_zero.jpg' };
-  const name = field(c, ['nama', 'name', 'title'], fallbackNames[key]);
-  const image = field(c, ['image', 'foto'], fallbackImages[key]);
+  const cfg = CAFE_CONFIG[key] || {};
+  const name = field(c, ['nama', 'name', 'title'], cfg.name);
+  const image = field(c, ['image', 'foto'], cfg.image);
   const desc = field(c, ['deskripsi', 'description'], 'Deskripsi cafe belum diisi di Spreadsheet.');
-  const menuUrl = field(c, ['menu_url', 'menu'], '#');
-  const videoUrl = field(c, ['video_url', 'video'], '');
-  const mapsUrl = field(c, ['lokasi_url', 'maps', 'location'], '#');
-  const waUrl = field(c, ['reservasi_url', 'whatsapp'], '#');
 
   app.querySelector('#view').innerHTML = `
     ${topbar()}
@@ -363,12 +380,10 @@ function renderCafeDetail() {
       <div class="detail-cover"><img src="${img(image)}" alt="${name}" onerror="this.parentElement.style.display='none'"></div>
       <h2 class="detail-title">${name}</h2>
       <p class="detail-desc">${desc}</p>
-      <button class="btn-gold" onclick="window.open('${menuUrl}','_blank')">🍽️ &nbsp; MENU</button>
-      ${videoUrl ? `<button class="btn-gold" onclick="window.open('${videoUrl}','_blank')">🎬 &nbsp; VIDEO</button>` : ''}
-      <button class="btn-gold" onclick="window.open('${mapsUrl}','_blank')">📍 &nbsp; LOKASI</button>
-      <button class="btn-gold solid" onclick="window.open('${waUrl}','_blank')">💬 &nbsp; RESERVASI</button>
+      ${cfg.menuUrl ? `<button class="btn-gold" onclick="window.open('${cfg.menuUrl}','_blank')">🍽️ &nbsp; MENU</button>` : ''}
+      <button class="btn-gold" onclick="window.open('${cfg.mapsUrl}','_blank')">📍 &nbsp; LOKASI</button>
+      <button class="btn-gold solid" onclick="window.open('${waLink(cfg.waMessage)}','_blank')">💬 &nbsp; RESERVASI</button>
     </div>
-    ${homeCta()}
   `;
 }
 
@@ -380,7 +395,6 @@ function renderTiket() {
   const title = field(t, ['title', 'judul'], 'Info Tiket Wisata');
   const image = field(t, ['image', 'foto'], 'tiket.jpg');
   const desc = field(t, ['deskripsi', 'description'], 'Informasi tiket wisata akan segera tersedia.');
-  const infoUrl = field(t, ['info_url', 'link'], '#');
 
   app.querySelector('#view').innerHTML = `
     ${topbar()}
@@ -389,9 +403,8 @@ function renderTiket() {
       <div class="detail-cover portrait"><img src="${img(image)}" alt="${title}" onerror="this.parentElement.style.display='none'"></div>
       <h2 class="detail-title">${title}</h2>
       <p class="detail-desc" style="text-align:center;">${desc}</p>
-      <button class="btn-gold solid" onclick="window.open('${infoUrl}','_blank')">Lihat Informasi</button>
+      <button class="btn-gold solid" onclick="window.open('${waLink('Hai, mau tanya tiket wisata')}','_blank')">💬 &nbsp; TANYA TIKET WISATA</button>
     </div>
-    ${homeCta()}
   `;
 }
 
@@ -403,10 +416,9 @@ function openStore(sheetKey, idx) {
   const name = field(s, ['nama', 'name', 'title'], 'Toko');
   const image = field(s, ['image', 'foto'], '');
   const desc = field(s, ['deskripsi', 'description'], 'Deskripsi toko belum diisi di Spreadsheet.');
-  const waUrl = field(s, ['whatsapp', 'reservasi_url'], '#');
-  const mapsUrl = field(s, ['lokasi_url', 'maps'], '#');
+  const mapsUrl = OLEH_OLEH_LOCATIONS[name.toLowerCase().trim()] || field(s, ['lokasi_url', 'maps'], '');
 
-  window.__storeDetail = { name, image, desc, waUrl, mapsUrl };
+  window.__storeDetail = { name, image, desc, mapsUrl };
   navigate('store-detail');
 }
 
@@ -418,10 +430,9 @@ function renderStoreDetail() {
       <div class="detail-cover"><img src="${img(s.image)}" alt="${s.name}" onerror="this.parentElement.style.display='none'"></div>
       <h2 class="detail-title">${s.name}</h2>
       <p class="detail-desc">${s.desc}</p>
-      <button class="btn-gold" onclick="window.open('${s.mapsUrl}','_blank')">📍 &nbsp; LOKASI</button>
-      <button class="btn-gold solid" onclick="window.open('${s.waUrl}','_blank')">💬 &nbsp; HUBUNGI</button>
+      ${s.mapsUrl ? `<button class="btn-gold" onclick="window.open('${s.mapsUrl}','_blank')">📍 &nbsp; LOKASI</button>` : ''}
+      <button class="btn-gold solid" onclick="window.open('${waLink('Hai, mau tanya oleh-oleh')}','_blank')">💬 &nbsp; HUBUNGI</button>
     </div>
-    ${homeCta()}
   `;
 }
 

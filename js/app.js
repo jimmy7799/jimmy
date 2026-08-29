@@ -89,38 +89,6 @@ function bottomNav(active) {
     </nav>`;
 }
 
-function tiktokEmbed(url) {
-  if (!url) return '';
-  const videoId = extractTiktokId(url);
-  return `
-    <div class="video-embed tiktok-official">
-      <blockquote class="tiktok-embed" cite="${url}" data-video-id="${videoId}" style="max-width:100%;min-width:100%;">
-        <section></section>
-      </blockquote>
-    </div>`;
-}
-
-// TikTok embed.js hanya perlu dimuat sekali; setelah itu dipanggil ulang
-// (.load()) tiap kali ada blockquote baru muncul di halaman (SPA).
-let tiktokScriptLoaded = false;
-function loadTiktokEmbed() {
-  if (tiktokScriptLoaded) {
-    if (window.tiktokEmbed && typeof window.tiktokEmbed.load === 'function') {
-      window.tiktokEmbed.load();
-    }
-    return;
-  }
-  const script = document.createElement('script');
-  script.src = 'https://www.tiktok.com/embed.js';
-  script.async = true;
-  document.body.appendChild(script);
-  tiktokScriptLoaded = true;
-}
-function extractTiktokId(url) {
-  const m = String(url).match(/video\/(\d+)/);
-  return m ? m[1] : '';
-}
-
 /* ---------------------------------------------------------
    ROUTER
 --------------------------------------------------------- */
@@ -298,7 +266,6 @@ function renderRoomDetail() {
   const desc = field(r, ['deskripsi', 'description'], 'Deskripsi kamar belum diisi.');
   const facilitiesRaw = field(r, ['fasilitas', 'facilities'], '');
   const facilities = facilitiesRaw ? String(facilitiesRaw).split(/[,•\n]/).map(s => s.trim()).filter(Boolean) : [];
-  const videoTiktok = field(r, ['video_tiktok'], '');
   const videoMp4 = field(r, ['video_mp4'], '');
   const booking = field(r, ['booking_url', 'booking'], field((DATA.HOTEL && DATA.HOTEL[0]), ['booking_url'], '#'));
 
@@ -313,13 +280,11 @@ function renderRoomDetail() {
         <h4 class="section-title" style="font-size:16px; text-align:left;">Fasilitas</h4>
         <ul class="facility-list">${facilities.map(f => `<li>${f}</li>`).join('')}</ul>
       ` : ''}
-      ${videoTiktok ? tiktokEmbed(videoTiktok) : (videoMp4 ? `<div class="video-embed"><video src="${videoMp4.startsWith('http') ? videoMp4 : img(videoMp4)}" controls playsinline></video></div>` : '')}
+      ${videoMp4 ? `<div class="video-embed"><video src="${videoMp4.startsWith('http') ? videoMp4 : img(videoMp4)}" controls playsinline preload="metadata"></video></div>` : ''}
       <button class="btn-gold solid" onclick="window.open('${booking}','_blank')">📅 &nbsp; PESAN</button>
     </div>
     ${homeCta()}
   `;
-
-  if (videoTiktok) loadTiktokEmbed();
 }
 function renderOlehOleh() {
   const stores = DATA.OLEH_OLEH || [

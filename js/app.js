@@ -91,10 +91,30 @@ function bottomNav(active) {
 
 function tiktokEmbed(url) {
   if (!url) return '';
+  const videoId = extractTiktokId(url);
   return `
-    <div class="video-embed">
-      <iframe src="https://www.tiktok.com/embed/v2/${extractTiktokId(url)}" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <div class="video-embed tiktok-official">
+      <blockquote class="tiktok-embed" cite="${url}" data-video-id="${videoId}" style="max-width:100%;min-width:100%;">
+        <section></section>
+      </blockquote>
     </div>`;
+}
+
+// TikTok embed.js hanya perlu dimuat sekali; setelah itu dipanggil ulang
+// (.load()) tiap kali ada blockquote baru muncul di halaman (SPA).
+let tiktokScriptLoaded = false;
+function loadTiktokEmbed() {
+  if (tiktokScriptLoaded) {
+    if (window.tiktokEmbed && typeof window.tiktokEmbed.load === 'function') {
+      window.tiktokEmbed.load();
+    }
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = 'https://www.tiktok.com/embed.js';
+  script.async = true;
+  document.body.appendChild(script);
+  tiktokScriptLoaded = true;
 }
 function extractTiktokId(url) {
   const m = String(url).match(/video\/(\d+)/);
@@ -298,11 +318,9 @@ function renderRoomDetail() {
     </div>
     ${homeCta()}
   `;
-}
 
-/* ---------------------------------------------------------
-   RENDER: OLEH-OLEH (listing + detail)
---------------------------------------------------------- */
+  if (videoTiktok) loadTiktokEmbed();
+}
 function renderOlehOleh() {
   const stores = DATA.OLEH_OLEH || [
     { NAMA: 'Paradise Center Point Oleh-Oleh', IMAGE: 'store_oleh_oleh.jpg' },

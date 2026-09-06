@@ -81,6 +81,7 @@ function iconSvg(name) {
     gift: '<rect x="3" y="8" width="18" height="13" rx="1"/><path d="M3 8h18M12 8v13M12 8c-1.5-4-6-4-6-1s3 1 6 1M12 8c1.5-4 6-4 6-1s-3 1-6 1"/>',
     coffee: '<path d="M4 8h13a3 3 0 0 1 0 6h-1"/><path d="M4 8v6a5 5 0 0 0 5 5h3a5 5 0 0 0 5-5V8"/><path d="M6 3c0 1-1 1-1 2M10 3c0 1-1 1-1 2"/>',
     ticket: '<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8z"/>',
+    promo: '<path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
     home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
     back: '<path d="M15 18l-6-6 6-6"/>',
     ig: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/>',
@@ -191,6 +192,15 @@ function renderHome() {
           <div class="card-sub">Lihat Gambar &amp; Info</div>
         </span>
         <span class="thumb"><img src="${img('tiket.jpg')}" alt="Tiket" onerror="this.parentElement.style.display='none'"></span>
+      </button>
+
+      <button class="nav-card" onclick="navigate('promo')">
+        <span class="icon-badge">${iconSvg('promo')}</span>
+        <span class="card-text">
+          <div class="card-title">PROMO</div>
+          <div class="card-sub">Penawaran Spesial</div>
+        </span>
+        <span class="thumb"><img src="${img('promo.png')}" alt="Promo" onerror="this.parentElement.style.display='none'"></span>
       </button>
     </div>
   `;
@@ -408,6 +418,27 @@ function renderTiket() {
   `;
 }
 
+/* ---------------------------------------------------------
+   RENDER: PROMO
+--------------------------------------------------------- */
+function renderPromo() {
+  const p = (DATA.PROMO && DATA.PROMO[0]) || {};
+  const title = field(p, ['title', 'judul'], 'Promo Spesial');
+  const image = field(p, ['image', 'foto'], 'promo.png');
+  const desc = field(p, ['deskripsi', 'description'], 'Cek penawaran promo terbaru dari Paradise Center Point.');
+
+  app.querySelector('#view').innerHTML = `
+    ${topbar()}
+    <h2 class="section-title">🏷️ Promo</h2>
+    <div class="detail-wrap">
+      <div class="detail-cover"><img src="${img(image)}" alt="${title}" onerror="this.parentElement.style.display='none'"></div>
+      <h2 class="detail-title">${title}</h2>
+      <p class="detail-desc" style="text-align:center;">${desc}</p>
+      <button class="btn-gold solid" onclick="window.open('${waLink('Hai, mau tanya promo')}','_blank')">💬 &nbsp; TANYA PROMO</button>
+    </div>
+  `;
+}
+
 // generic "openStore" digunakan untuk oleh-oleh (belum ada halaman detail per-toko
 // spesifik di spreadsheet -> tampilkan info dasar dari sheet OLEH_OLEH)
 function openStore(sheetKey, idx) {
@@ -448,6 +479,7 @@ const ROUTES = {
   'cafe': { fn: renderCafe, nav: 'cafe' },
   'cafe-detail': { fn: renderCafeDetail, nav: 'cafe' },
   'tiket': { fn: renderTiket, nav: 'tiket' },
+  'promo': { fn: renderPromo, nav: 'promo' },
 };
 
 function render(route) {
